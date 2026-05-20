@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
 import PromptForm from '../components/PromptForm'
-import { generateJSON, generateImage } from '../lib/ai'
+import { generateJSON, generateImage } from '../lib/ai_util'
 
 type PosterData = {
   headline: string
