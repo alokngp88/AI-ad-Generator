@@ -9,7 +9,7 @@ export default function Login() {
         redirectTo: window.location.origin,
       },
     });
-    if (error) console.error('OAuth error:', error.message)
+    //if (error) console.error('OAuth error:', error.message)
   }
 
   return (

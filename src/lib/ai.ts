@@ -26,7 +26,7 @@ export async function generateText(prompt: string): Promise<string> {
 }
 
 // ── JSON generation ──────────────────────────────────────────────
-export async function generateJSON<T>(prompt: string): Promise<T> {
+export async function generateJSON<T= unknown>(prompt: string): Promise<T> {
   const raw = await callAI('json', prompt)
   try {
     return JSON.parse(raw) as T
