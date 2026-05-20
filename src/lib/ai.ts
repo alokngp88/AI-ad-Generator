@@ -36,21 +36,11 @@ export async function generateJSON<T>(prompt: string): Promise<T> {
 }
 
 // ── Image generation (returns base64 data URL) ───────────────────
-export async function generateImage(prompt: string): Promise<string> {
-    const { data, error } = await supabase.functions.invoke('ai-generate', {
-      body: { action: 'image', prompt }
-    })
-  
-    if (error) throw new Error(error.message)
-    if (data?.error) throw new Error(data.error)
-  
-    const result = data.result
-  
-    // SVG — return raw SVG string directly (don't convert to blob URL)
-    if (typeof result === 'string' && result.trimStart().startsWith('<svg')) {
-      return result  // raw SVG string
-    }
-  
-    // Already a data URL (base64 PNG from Imagen 3)
-    return result
-  }
+export async function generateImage(prompt: string): Promise {
+  const { data, error } = await supabase.functions.invoke('ai-generate', {
+    body: { action: 'image', prompt }
+  })
+  if (error) throw new Error(error.message)
+  if (data?.error) throw new Error(data.error)
+  return data.result  // always data:image/png;base64,...
+}
