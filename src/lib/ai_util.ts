@@ -37,7 +37,7 @@ export async function generateJSON(prompt: string): Promise<unknown> {
 }
 
 // ── Image generation (returns base64 data URL) ───────────────────
-export async function generateImage(prompt: string): Promise <unknown>{
+export async function generateImage(prompt: string): Promise{
   const { data, error } = await supabase.functions.invoke('ai-generate', {
     body: { action: 'image', prompt }
   })
