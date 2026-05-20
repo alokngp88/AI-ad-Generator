@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PromptForm from '../components/PromptForm';
-import { generateJSON } from '../lib/gemini';
-import { generateImage } from '../lib/hfImage';
+import { generateJSON, generateImage } from '../lib/ai'
 
 type Scene = {
   scene: number;

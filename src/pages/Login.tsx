@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Chrome } from 'lucide-react';
+import { Globe } from 'lucide-react';
 
 export default function Login() {
   async function signInWithGoogle() {
@@ -9,6 +9,7 @@ export default function Login() {
         redirectTo: window.location.origin,
       },
     });
+    if (error) console.error('OAuth error:', error.message)
   }
 
   return (
@@ -29,7 +30,7 @@ export default function Login() {
                      border border-gray-200 py-3 rounded-xl
                      text-sm font-medium hover:bg-gray-50 transition"
         >
-          <Chrome size={18} />
+          <Globe size={18} />
           Continue with Google
         </button>
       </div>
