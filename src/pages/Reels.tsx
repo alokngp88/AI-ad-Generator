@@ -11,6 +11,16 @@ type Scene = {
   imageUrl?: string;
 };
 
+type ReelScene = {
+  scene:     number
+  duration:  string
+  hook:      string
+  voiceover: string
+  visual:    string
+  caption:   string
+  cta:       string
+  imageUrl?: string
+}
 export default function Reels() {
   const [loading, setLoading] = useState(false);
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -34,7 +44,7 @@ export default function Reels() {
         Make it engaging, energetic, with a hook in scene 1 and CTA in scene 6.
       `;
 
-      const script = await generateJSON<Scene[]>(prompt);
+      const script = await generateJSON(prompt) as ReelScene[]
 
       const withPlaceholders = script.map((s) => ({ ...s, imageUrl: '' }));
       setScenes(withPlaceholders);

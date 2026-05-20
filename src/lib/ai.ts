@@ -26,12 +26,13 @@ export async function generateText(prompt: string): Promise<string> {
 }
 
 // ── JSON generation ──────────────────────────────────────────────
-export async function generateJSON<T= unknown>(prompt: string): Promise<T> {
-  const raw = await callAI('json', prompt)
+export async function generateJSON(prompt: string): Promise<unknown> {
+  const raw   = await callAI('json', prompt)
+  const clean = raw.replace(/```json|```/g, '').trim()
   try {
-    return JSON.parse(raw) as T
+    return JSON.parse(clean)
   } catch {
-    throw new Error('AI returned invalid JSON. Raw response: ' + raw.slice(0, 200))
+    throw new Error('AI returned invalid JSON. Raw: ' + clean.slice(0, 200))
   }
 }
 

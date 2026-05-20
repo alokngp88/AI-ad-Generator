@@ -34,7 +34,7 @@ export default function Stories() {
         Slide 1: Hook/attention. Slide 2: Value/benefit. Slide 3: CTA.
       `;
 
-      const storySlides = await generateJSON<Slide[]>(prompt);
+      const storySlides = await generateJSON(prompt) as Slide[]
       setSlides(storySlides.map((s) => ({ ...s, imageUrl: '' })));
 
       for (let i = 0; i < storySlides.length; i++) {
