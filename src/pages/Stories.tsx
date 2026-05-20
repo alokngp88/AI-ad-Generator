@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PromptForm from '../components/PromptForm';
-import { generateJSON, generateImage } from '../lib/ai'
+import { generateJSON, generateImage } from '../lib/ai_util'
 
 type Slide = {
   slide: number;
