@@ -28,9 +28,8 @@ export default function AdPoster() {
         Tagline: one sentence benefit.
         CTA: 3-4 words action phrase.
       `
-      const copy = await generateJSON<{
-        headline: string, tagline: string, cta: string
-      }>(textPrompt)
+      const copy = await generateJSON(textPrompt) as { headline: string, tagline: string, cta: string }
+
 
       const imagePrompt = `
         Professional advertising poster illustration for: ${brief}.
