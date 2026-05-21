@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon-192.png', 'icon-512.png'],
+      includeAssets: ['icon.png', 'icon.png'],
       manifest: {
         name: 'AI Marketing Studio',
         short_name: 'AIStudio',
