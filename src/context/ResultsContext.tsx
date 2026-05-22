@@ -1,8 +1,9 @@
 // src/context/ResultsContext.tsx
+import type { ReactNode } from 'react';
 
 import {
     createContext, useContext, useState,
-    useCallback, ReactNode
+    useCallback
   } from 'react'
   
   type PosterResult = {

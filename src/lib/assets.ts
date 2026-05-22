@@ -22,11 +22,6 @@ export type UserProfile = {
     plan_type: 'Free' | 'Paid'
   }
 
-interface DBResponse<T> {
-  result?: T
-  error?:  string
-}
-
 async function callDB<T>(
   action:   string,
   payload?: Record<string, unknown>

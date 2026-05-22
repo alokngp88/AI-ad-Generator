@@ -10,14 +10,6 @@ import { useResults } from '../context/ResultsContext'
 import ErrorMessage from '../components/ErrorMessage'
 import { getFriendlyMessage, type AppErrorCode } from '../lib/errors'
 
-type PosterData = {
-  headline: string
-  tagline: string
-  cta: string
-  imageData: string
-  isSvg: boolean
-}
-
 export default function AdPoster() {
   const [loading, setLoading] = useState(false)
   const { poster, setPoster } = useResults()

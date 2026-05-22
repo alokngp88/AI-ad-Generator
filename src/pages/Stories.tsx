@@ -4,6 +4,8 @@ import PromptForm from '../components/PromptForm';
 import UsageGuard from '../components/UsageGuard'
 import { generateJSON, generateImage } from '../lib/ai_util'
 import { saveAsset, logUsage } from '../lib/assets'
+import ErrorMessage from '../components/ErrorMessage'
+import { getFriendlyMessage, type AppErrorCode } from '../lib/errors'
 import { downloadStoriesZip } from '../lib/download'
 import { useUsage } from '../context/UsageContext'
 import { useResults } from '../context/ResultsContext'
@@ -79,7 +81,7 @@ export default function Stories() {
             return updated;
           });
         } catch {
-          finalSlides[i] = { ...finalScenes[i], imageUrl: 'error' }
+          finalSlides[i] = { ...finalSlides[i], imageUrl: 'error' }
           setSlides(prev => {
           const updated = [...prev]
           updated[i] = { ...updated[i], imageUrl: 'error' }

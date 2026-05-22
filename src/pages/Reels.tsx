@@ -10,15 +10,6 @@ import { useResults } from '../context/ResultsContext'
 import ErrorMessage from '../components/ErrorMessage'
 import { getFriendlyMessage, type AppErrorCode } from '../lib/errors'
 
-type Scene = {
-  scene: number;
-  duration: string;
-  voiceover: string;
-  visual: string;
-  caption: string;
-  imageUrl?: string;
-};
-
 type ReelScene = {
   scene:     number
   duration:  string
