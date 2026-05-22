@@ -1,6 +1,14 @@
-import { useState } from 'react';
-import PromptForm from '../components/PromptForm';
+import { useState } from 'react'
+import { Download } from 'lucide-react'
+import PromptForm from '../components/PromptForm'
+import UsageGuard from '../components/UsageGuard'
 import { generateJSON, generateImage } from '../lib/ai_util'
+import { saveAsset, logUsage } from '../lib/assets'
+import { downloadReelsZip } from '../lib/download'
+import { useUsage} from '../context/UsageContext'
+import { useResults } from '../context/ResultsContext'
+import ErrorMessage from '../components/ErrorMessage'
+import { getFriendlyMessage, type AppErrorCode } from '../lib/errors'
 
 type Scene = {
   scene: number;
@@ -23,14 +31,32 @@ type ReelScene = {
 }
 export default function Reels() {
   const [loading, setLoading] = useState(false);
-  const [scenes, setScenes] = useState<Scene[]>([]);
+  const { scenes, setScenes } = useResults() 
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState<AppErrorCode>('UNKNOWN')
+  const [dlLoading, setDlLoading] = useState(false)
+  const { decrement, refetch } = useUsage()
 
+  function handleError(e: unknown) {
+    const { message, code } = getFriendlyMessage(e)
+    setError(message)
+    setErrorCode(code)
+    setLoading(false)
+  }
+  
+  function clearError() {
+    setError('')
+  }
+  
   async function handleGenerate(brief: string) {
     setLoading(true);
-    setError('');
+    clearError()
     setScenes([]);
     try {
+      
+            // ── 1. Check + log usage FIRST (gate before AI call) ────────
+            const { usageId } = await logUsage('reels')
+            decrement()
       const prompt = `
         Create a 6-scene Instagram Reel script for: ${brief}
         Return a JSON array of 6 objects, each with:
@@ -48,22 +74,51 @@ export default function Reels() {
 
       const withPlaceholders = script.map((s) => ({ ...s, imageUrl: '' }));
       setScenes(withPlaceholders);
+      setLoading(false)
 
+      const finalScenes = [...withPlaceholders]
+      setLoading(true)
+      
       for (let i = 0; i < script.length; i++) {
+        try{
         const imgUrl = await generateImage(
           script[i].visual + ', vertical video frame, cinematic, vibrant'
         );
+        // Update local array
+        finalScenes[i] = { ...finalScenes[i], imageUrl: imgUrl }
+
         setScenes((prev) => {
           const updated = [...prev];
           updated[i] = { ...updated[i], imageUrl: imgUrl };
           return updated;
         });
+      } catch{
+        finalScenes[i] = { ...finalScenes[i], imageUrl: 'error' }
+        setScenes(prev => {
+          const updated = [...prev]
+          updated[i] = { ...updated[i], imageUrl: 'error' }
+          return updated
+        })
       }
+      }
+      await saveAsset(
+        'reels',
+        brief,
+        { scenes: finalScenes } as Record<string, unknown>,
+        usageId
+      )
+      await refetch()
     } catch (e: any) {
-      setError(e.message);
+      handleError(e)
     } finally {
       setLoading(false);
     }
+  }
+  async function handleDownload() {
+    if (!scenes) return
+    setDlLoading(true)
+    try { await downloadReelsZip(scenes) }
+    finally { setDlLoading(false) }
   }
 
   return (
@@ -74,16 +129,21 @@ export default function Reels() {
         images.
       </p>
 
-      <PromptForm
-        onGenerate={handleGenerate}
-        loading={loading}
-        placeholder="e.g. A sustainable sneaker brand launching a new limited edition..."
-      />
+      <UsageGuard onGenerate={handleGenerate} loading={loading}
+        placeholder="e.g. A sustainable sneaker brand launching a new limited edition...">
+        <PromptForm onGenerate={handleGenerate} loading={loading}
+          placeholder="e.g. A sustainable sneaker brand launching a new limited edition..." />
+      </UsageGuard>
 
       {error && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">
-          {error}
-        </div>
+        <ErrorMessage
+        message={error}
+        code={errorCode}
+        onRetry={() => {
+          clearError()
+          // optionally re-trigger last prompt
+        }}
+      />
       )}
 
       {scenes.length > 0 && (
@@ -134,6 +194,15 @@ export default function Reels() {
           ))}
         </div>
       )}
+      <div className="px-4 pb-4">
+            <button onClick={handleDownload} disabled={dlLoading}
+              className="w-full flex items-center justify-center gap-2
+                         border border-gray-200 py-2 rounded-xl text-sm
+                         text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+              <Download size={15} />
+              {dlLoading ? 'Preparing zip...' : 'Download all assets (.zip)'}
+            </button>
+          </div>
     </div>
   );
 }

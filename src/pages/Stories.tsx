@@ -1,6 +1,12 @@
 import { useState } from 'react';
+import { Download } from 'lucide-react'
 import PromptForm from '../components/PromptForm';
+import UsageGuard from '../components/UsageGuard'
 import { generateJSON, generateImage } from '../lib/ai_util'
+import { saveAsset, logUsage } from '../lib/assets'
+import { downloadStoriesZip } from '../lib/download'
+import { useUsage } from '../context/UsageContext'
+import { useResults } from '../context/ResultsContext'
 
 type Slide = {
   slide: number;
@@ -13,14 +19,32 @@ type Slide = {
 
 export default function Stories() {
   const [loading, setLoading] = useState(false);
-  const [slides, setSlides] = useState<Slide[]>([]);
+  const { slides, setSlides } = useResults()
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState<AppErrorCode>('UNKNOWN')
+  const [dlLoading, setDlLoading] = useState(false)
+  const { decrement, refetch } = useUsage()
+
+  function handleError(e: unknown) {
+    const { message, code } = getFriendlyMessage(e)
+    setError(message)
+    setErrorCode(code)
+    setLoading(false)
+  }
+  
+  function clearError() {
+    setError('')
+  }
 
   async function handleGenerate(brief: string) {
     setLoading(true);
-    setError('');
+    clearError()
     setSlides([]);
     try {
+      // ── 1. Check + log usage FIRST (gate before AI call) ────────
+      const { usageId } = await logUsage('stories')
+      decrement()
+
       const prompt = `
         Create 3 Instagram Story slides for: ${brief}
         Return a JSON array of 3 objects:
@@ -35,24 +59,53 @@ export default function Stories() {
       `;
 
       const storySlides = await generateJSON(prompt) as Slide[]
+      const withPlaceholders = storySlides.map((s) => ({ ...s, imageUrl: '' }));
       setSlides(storySlides.map((s) => ({ ...s, imageUrl: '' })));
+      setLoading(false)
 
+      const finalSlides = [...withPlaceholders]
+      setLoading(true)
       for (let i = 0; i < storySlides.length; i++) {
-        const imgUrl = await generateImage(
-          storySlides[i].bg_prompt +
-            ', portrait 9x16 aspect ratio, Instagram story background, vibrant'
-        );
-        setSlides((prev) => {
-          const updated = [...prev];
-          updated[i] = { ...updated[i], imageUrl: imgUrl };
-          return updated;
-        });
+        try {
+          const imgUrl = await generateImage(
+            storySlides[i].bg_prompt +
+              ', portrait 9x16 aspect ratio, Instagram story background, vibrant'
+          );
+          // Update local array
+          finalSlides[i] = { ...finalSlides[i], imageUrl: imgUrl }
+          setSlides((prev) => {
+            const updated = [...prev];
+            updated[i] = { ...updated[i], imageUrl: imgUrl };
+            return updated;
+          });
+        } catch {
+          finalSlides[i] = { ...finalScenes[i], imageUrl: 'error' }
+          setSlides(prev => {
+          const updated = [...prev]
+          updated[i] = { ...updated[i], imageUrl: 'error' }
+          return updated
+        })
+        }
       }
+      await saveAsset(
+        'stories',
+        brief,
+        { slides: finalSlides } as Record<string, unknown>,
+        usageId
+      )
+      await refetch()
     } catch (e: any) {
-      setError(e.message);
+      handleError(e)
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDownload() {
+    if (!slides) return
+    setDlLoading(true)
+    try { await downloadStoriesZip(slides) }
+    finally { setDlLoading(false) }
   }
 
   return (
@@ -62,16 +115,21 @@ export default function Stories() {
         Get 3 story slides with copy and background visuals.
       </p>
 
-      <PromptForm
-        onGenerate={handleGenerate}
-        loading={loading}
-        placeholder="e.g. A yoga studio running a summer membership sale..."
-      />
+      <UsageGuard onGenerate={handleGenerate} loading={loading}
+        placeholder="e.g. A yoga studio running a summer membership sale...">
+        <PromptForm onGenerate={handleGenerate} loading={loading}
+          placeholder="e.g. A yoga studio running a summer membership sale..." />
+      </UsageGuard>
 
       {error && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">
-          {error}
-        </div>
+        <ErrorMessage
+        message={error}
+        code={errorCode}
+        onRetry={() => {
+          clearError()
+          // optionally re-trigger last prompt
+        }}
+      />
       )}
 
       {slides.length > 0 && (
@@ -119,6 +177,15 @@ export default function Stories() {
           ))}
         </div>
       )}
+      <div className="px-4 pb-4">
+            <button onClick={handleDownload} disabled={dlLoading}
+              className="w-full flex items-center justify-center gap-2
+                         border border-gray-200 py-2 rounded-xl text-sm
+                         text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+              <Download size={15} />
+              {dlLoading ? 'Preparing zip...' : 'Download all assets (.zip)'}
+            </button>
+          </div>
     </div>
   );
 }
