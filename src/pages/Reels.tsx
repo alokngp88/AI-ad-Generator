@@ -22,7 +22,7 @@ type ReelScene = {
 }
 export default function Reels() {
   const [loading, setLoading] = useState(false);
-  const { scenes, setScenes } = useResults() 
+  const { scenes, setScenes } = useResults<ReelScene[]>([]) 
   const [error, setError] = useState('');
   const [errorCode, setErrorCode] = useState<AppErrorCode>('UNKNOWN')
   const [dlLoading, setDlLoading] = useState(false)
@@ -78,8 +78,8 @@ export default function Reels() {
         // Update local array
         finalScenes[i] = { ...finalScenes[i], imageUrl: imgUrl }
 
-        setScenes((prev) => {
-          const updated = [...prev] as ReelScene[];
+        setScenes((prev ) => {
+          const updated = [...prev];
           updated[i] = { ...updated[i], imageUrl: imgUrl };
           return updated;
         });
