@@ -79,7 +79,7 @@ export default function Reels() {
         finalScenes[i] = { ...finalScenes[i], imageUrl: imgUrl }
 
         setScenes((prev) => {
-          const updated = [...prev];
+          const updated = [...prev] as ReelScene[];
           updated[i] = { ...updated[i], imageUrl: imgUrl };
           return updated;
         });
