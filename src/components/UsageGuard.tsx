@@ -4,9 +4,8 @@ type Props = { children: React.ReactNode }
 
 export default function UsageGuard({ children }: Props) {
   const { remaining, isExhausted, limit, loading } = useUsage()
-  const temp = limit
   const showWarning = !loading && remaining <= 5
-
+  console.log(`Number of hits limit: `, limit)
   return (
     <div className="space-y-3">
 

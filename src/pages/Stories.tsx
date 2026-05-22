@@ -117,8 +117,7 @@ export default function Stories() {
         Get 3 story slides with copy and background visuals.
       </p>
 
-      <UsageGuard onGenerate={handleGenerate} loading={loading}
-        placeholder="e.g. A yoga studio running a summer membership sale...">
+      <UsageGuard>
         <PromptForm onGenerate={handleGenerate} loading={loading}
           placeholder="e.g. A yoga studio running a summer membership sale..." />
       </UsageGuard>

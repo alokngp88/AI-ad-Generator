@@ -60,8 +60,8 @@ async function callDB<T>(
 }
 
 // Get how many requests user has made today
-export async function getUsage(): Promise<{ used: number }> {
-  return callDB('get-usage')
+export async function getUsage(): Promise<UsageInfo> {
+  return callDB<UsageInfo>('get-usage')
 }
 
 // Log one usage entry — returns usageId + updated counts

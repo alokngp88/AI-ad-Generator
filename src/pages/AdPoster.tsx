@@ -89,8 +89,7 @@ export default function AdPoster() {
         Describe your brand or campaign to generate ad copy and a poster image.
       </p>
 
-      <UsageGuard onGenerate={handleGenerate} loading={loading}
-        placeholder="e.g. A paneer specialised restaurant...">
+      <UsageGuard>
         <PromptForm onGenerate={handleGenerate} loading={loading}
           placeholder="e.g. A paneer specialised restaurant..." />
       </UsageGuard>
