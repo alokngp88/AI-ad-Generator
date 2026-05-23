@@ -204,7 +204,7 @@ export default function AdPoster() {
         <PromptForm
           onGenerate={handleGenerate}
           loading={loading}
-          placeholder="e.g. A burger and pizza specialised restaurant..."
+          placeholder="e.g. A paneer specialised restaurant..."
         />
       </UsageGuard>
 
