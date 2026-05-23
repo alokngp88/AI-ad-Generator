@@ -1,8 +1,9 @@
 // src/context/ResultsContext.tsx
+import type { ReactNode } from 'react';
 
 import {
     createContext, useContext, useState,
-    useCallback, ReactNode
+    useCallback
   } from 'react'
   
   type PosterResult = {
@@ -37,9 +38,9 @@ import {
     poster:     PosterResult
     setPoster:  (v: PosterResult) => void
     scenes:     ReelScene[]
-    setScenes:  (v: ReelScene[]) => void
+    setScenes:  React.Dispatch<React.SetStateAction<ReelScene[]>> 
     slides:     StorySlide[]
-    setSlides:  (v: StorySlide[]) => void
+    setSlides:  React.Dispatch<React.SetStateAction<StorySlide[]>>
     clearAll:   () => void
   }
   
