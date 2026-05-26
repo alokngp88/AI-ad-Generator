@@ -58,49 +58,43 @@ function CandleChart({
   srLevels: SRLevel[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef     = useRef<unknown>(null)
 
   useEffect(() => {
     if (!containerRef.current || !candles.length) return
 
-    // Dynamically import lightweight-charts
-    import('lightweight-charts').then(({ createChart, ColorType }) => {
-      // Clean up previous chart
-      if (chartRef.current) {
-        (chartRef.current as { remove: () => void }).remove()
-        chartRef.current = null
-      }
+    let cleanup: (() => void) | undefined
 
-      const chart = createChart(containerRef.current!, {
+    import('lightweight-charts').then((lc) => {
+      if (!containerRef.current) return
+
+      const chart = lc.createChart(containerRef.current, {
         layout: {
-          background: { type: ColorType.Solid, color: '#ffffff' },
+          background: { type: lc.ColorType.Solid, color: '#ffffff' },
           textColor:  '#374151',
         },
         grid: {
-          vertLines:  { color: '#f3f4f6' },
-          horzLines:  { color: '#f3f4f6' },
+          vertLines: { color: '#f3f4f6' },
+          horzLines: { color: '#f3f4f6' },
         },
-        crosshair: { mode: 1 },
+        crosshair:       { mode: 1 },
         rightPriceScale: { borderColor: '#e5e7eb' },
         timeScale:       { borderColor: '#e5e7eb', timeVisible: true },
-        width:  containerRef.current!.clientWidth,
+        width:  containerRef.current.clientWidth,
         height: 380,
       })
 
-      chartRef.current = chart
-
-      // Candlestick series
-      const candleSeries = chart.addCandlestickSeries({
-        upColor:        '#16a34a',
-        downColor:      '#dc2626',
-        borderUpColor:  '#16a34a',
-        borderDownColor:'#dc2626',
-        wickUpColor:    '#16a34a',
-        wickDownColor:  '#dc2626',
+      // ── v5 API: addSeries with CandlestickSeries type ────────────
+      const candleSeries = chart.addSeries(lc.CandlestickSeries, {
+        upColor:         '#16a34a',
+        downColor:       '#dc2626',
+        borderUpColor:   '#16a34a',
+        borderDownColor: '#dc2626',
+        wickUpColor:     '#16a34a',
+        wickDownColor:   '#dc2626',
       })
 
       const chartData = candles.map(c => ({
-        time:  Math.floor(c.time / 1000) as unknown as string,
+        time:  (Math.floor(c.time / 1000)) as unknown as lc.Time,
         open:  c.open,
         high:  c.high,
         low:   c.low,
@@ -109,43 +103,48 @@ function CandleChart({
 
       candleSeries.setData(chartData)
 
-      // Draw S&R lines
+      // ── v5 API: addSeries with LineSeries type ───────────────────
       srLevels.forEach(level => {
-        const lineSeries = chart.addLineSeries({
-          color:       level.type === 'resistance' ? '#dc2626' : '#16a34a',
-          lineWidth:   level.strength >= 3 ? 2 : 1,
-          lineStyle:   level.strength >= 4 ? 0 : 2,  // solid or dashed
+        if (chartData.length < 2) return
+
+        const lineSeries = chart.addSeries(lc.LineSeries, {
+          color:            level.type === 'resistance' ? '#dc2626' : '#16a34a',
+          lineWidth:        level.strength >= 3 ? 2 : 1,
+          lineStyle:        level.strength >= 4 ? 0 : 2,
           priceLineVisible: false,
           lastValueVisible: true,
           title: `${level.type === 'resistance' ? 'R' : 'S'} ${fmt(level.price)}`,
         })
 
-        if (chartData.length > 0) {
-          lineSeries.setData([
-            { time: chartData[0].time,                    value: level.price },
-            { time: chartData[chartData.length - 1].time, value: level.price },
-          ])
-        }
+        lineSeries.setData([
+          { time: chartData[0].time,                     value: level.price },
+          { time: chartData[chartData.length - 1].time,  value: level.price },
+        ])
       })
 
       chart.timeScale().fitContent()
 
-      // Resize observer
       const observer = new ResizeObserver(() => {
-        chart.applyOptions({ width: containerRef.current!.clientWidth })
+        if (containerRef.current) {
+          chart.applyOptions({ width: containerRef.current.clientWidth })
+        }
       })
-      observer.observe(containerRef.current!)
+      observer.observe(containerRef.current)
 
-      return () => {
+      cleanup = () => {
         observer.disconnect()
         chart.remove()
       }
     })
+
+    return () => { cleanup?.() }
   }, [candles, srLevels])
 
   return (
-    <div ref={containerRef} className="w-full rounded-xl overflow-hidden
-                                        border border-gray-200" />
+    <div
+      ref={containerRef}
+      className="w-full rounded-xl overflow-hidden border border-gray-200"
+    />
   )
 }
 
