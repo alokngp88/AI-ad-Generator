@@ -39,7 +39,7 @@ export default function Layout() {
             }}
           />
           <span className="text-base font-medium text-gray-800 flex-1">
-            AI Marketing Studio
+            AI Marketing Studio Lab
           </span>
 
           {/* Desktop nav — shown on md and above */}
