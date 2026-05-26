@@ -1,38 +1,46 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, TrendingUp, TrendingDown,
-         Calendar, BarChart2, X, ChevronDown } from 'lucide-react'
+import {
+  Search, TrendingUp, TrendingDown,
+  Calendar, BarChart2, X, ChevronDown
+} from 'lucide-react'
+import type {
+  IChartApi,
+  Time,
+  CandlestickSeriesOptions,
+  LineSeriesOptions,
+} from 'lightweight-charts'
 import {
   fetchMarketData, calculateSRLevels,
-  searchTickers,  type Candle,
-  type SRLevel,   type MarketMeta
+  searchTickers, type Candle,
+  type SRLevel, type MarketMeta
 } from '../lib/marketData'
 import { getFriendlyMessage, type AppErrorCode } from '../lib/errors'
 import ErrorMessage from '../components/ErrorMessage'
 
 const GRANULARITIES = [
-  { value: '5min',  label: '5 Min'  },
+  { value: '5min', label: '5 Min' },
   { value: '15min', label: '15 Min' },
   { value: '30min', label: '30 Min' },
-  { value: '1hr',   label: '1 Hour' },
-  { value: '1day',  label: '1 Day'  },
-  { value: '1mon',  label: '1 Month'},
-  { value: '3mon',  label: '3 Month'},
-  { value: '6mon',  label: '6 Month'},
-  { value: '1yr',   label: '1 Year' },
+  { value: '1hr', label: '1 Hour' },
+  { value: '1day', label: '1 Day' },
+  { value: '1mon', label: '1 Month' },
+  { value: '3mon', label: '3 Month' },
+  { value: '6mon', label: '6 Month' },
+  { value: '1yr', label: '1 Year' },
 ]
 
 // Granularity → sensible default date range
 function defaultDateRange(gran: string): { start: string; end: string } {
-  const end   = new Date()
+  const end = new Date()
   const start = new Date()
-  if      (gran === '5min' || gran === '15min') start.setDate(end.getDate() - 5)
-  else if (gran === '30min' || gran === '1hr')  start.setDate(end.getDate() - 30)
-  else if (gran === '1day')                     start.setFullYear(end.getFullYear() - 1)
-  else if (gran === '1mon' || gran === '3mon')  start.setFullYear(end.getFullYear() - 3)
-  else                                          start.setFullYear(end.getFullYear() - 5)
+  if (gran === '5min' || gran === '15min') start.setDate(end.getDate() - 5)
+  else if (gran === '30min' || gran === '1hr') start.setDate(end.getDate() - 30)
+  else if (gran === '1day') start.setFullYear(end.getFullYear() - 1)
+  else if (gran === '1mon' || gran === '3mon') start.setFullYear(end.getFullYear() - 3)
+  else start.setFullYear(end.getFullYear() - 5)
   return {
     start: start.toISOString().split('T')[0],
-    end:   end.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
   }
 }
 
@@ -58,12 +66,18 @@ function CandleChart({
   srLevels: SRLevel[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef     = useRef<IChartApi | null>(null)
 
   useEffect(() => {
     if (!containerRef.current || !candles.length) return
 
-    let cleanup: (() => void) | undefined
+    // Cleanup previous chart before creating new one
+    if (chartRef.current) {
+      chartRef.current.remove()
+      chartRef.current = null
+    }
 
+    // Runtime dynamic import — avoids SSR issues
     import('lightweight-charts').then((lc) => {
       if (!containerRef.current) return
 
@@ -83,18 +97,24 @@ function CandleChart({
         height: 380,
       })
 
-      // ── v5 API: addSeries with CandlestickSeries type ────────────
-      const candleSeries = chart.addSeries(lc.CandlestickSeries, {
+      chartRef.current = chart
+
+      // Candlestick series — v5 API
+      const candleOpts: Partial<CandlestickSeriesOptions> = {
         upColor:         '#16a34a',
         downColor:       '#dc2626',
         borderUpColor:   '#16a34a',
         borderDownColor: '#dc2626',
         wickUpColor:     '#16a34a',
         wickDownColor:   '#dc2626',
-      })
+      }
+      const candleSeries = chart.addSeries(
+        lc.CandlestickSeries,
+        candleOpts
+      )
 
       const chartData = candles.map(c => ({
-        time:  (Math.floor(c.time / 1000)) as unknown as lc.Time,
+        time:  Math.floor(c.time / 1000) as unknown as Time,
         open:  c.open,
         high:  c.high,
         low:   c.low,
@@ -103,41 +123,53 @@ function CandleChart({
 
       candleSeries.setData(chartData)
 
-      // ── v5 API: addSeries with LineSeries type ───────────────────
-      srLevels.forEach(level => {
-        if (chartData.length < 2) return
+      if (chartData.length >= 2) {
+        // S&R lines — v5 API
+        srLevels.forEach(level => {
+          const lineOpts: Partial<LineSeriesOptions> = {
+            color:            level.type === 'resistance' ? '#dc2626' : '#16a34a',
+            lineWidth:        (level.strength >= 3 ? 2 : 1) as 1 | 2 | 3 | 4,
+            lineStyle:        level.strength >= 4 ? 0 : 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: `${level.type === 'resistance' ? 'R' : 'S'} ${fmt(level.price)}`,
+          }
 
-        const lineSeries = chart.addSeries(lc.LineSeries, {
-          color:            level.type === 'resistance' ? '#dc2626' : '#16a34a',
-          lineWidth:        level.strength >= 3 ? 2 : 1,
-          lineStyle:        level.strength >= 4 ? 0 : 2,
-          priceLineVisible: false,
-          lastValueVisible: true,
-          title: `${level.type === 'resistance' ? 'R' : 'S'} ${fmt(level.price)}`,
+          const lineSeries = chart.addSeries(lc.LineSeries, lineOpts)
+
+          lineSeries.setData([
+            { time: chartData[0].time,                    value: level.price },
+            { time: chartData[chartData.length - 1].time, value: level.price },
+          ])
         })
-
-        lineSeries.setData([
-          { time: chartData[0].time,                     value: level.price },
-          { time: chartData[chartData.length - 1].time,  value: level.price },
-        ])
-      })
+      }
 
       chart.timeScale().fitContent()
 
+      // Resize observer — keeps chart responsive
       const observer = new ResizeObserver(() => {
-        if (containerRef.current) {
-          chart.applyOptions({ width: containerRef.current.clientWidth })
+        if (containerRef.current && chartRef.current) {
+          chartRef.current.applyOptions({
+            width: containerRef.current.clientWidth
+          })
         }
       })
       observer.observe(containerRef.current)
 
-      cleanup = () => {
+      // Store cleanup on the ref so useEffect return can call it
+      const originalRemove = chart.remove.bind(chart)
+      chartRef.current.remove = () => {
         observer.disconnect()
-        chart.remove()
+        originalRemove()
+        chartRef.current = null
       }
     })
 
-    return () => { cleanup?.() }
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.remove()
+      }
+    }
   }, [candles, srLevels])
 
   return (
@@ -150,22 +182,22 @@ function CandleChart({
 
 // ── Main page ────────────────────────────────────────────────────
 export default function MarketAnalysis() {
-  const [ticker,      setTicker]      = useState('')
+  const [ticker, setTicker] = useState('')
   const [suggestions, setSuggestions] = useState<typeof import('../lib/marketData').INDIAN_TICKERS>([])
   const [showSuggest, setShowSuggest] = useState(false)
   const [selectedMeta, setSelectedMeta] = useState<{ symbol: string; name: string } | null>(null)
 
   const [granularity, setGranularity] = useState('1day')
-  const [startDate,   setStartDate]   = useState(defaultDateRange('1day').start)
-  const [endDate,     setEndDate]     = useState(defaultDateRange('1day').end)
+  const [startDate, setStartDate] = useState(defaultDateRange('1day').start)
+  const [endDate, setEndDate] = useState(defaultDateRange('1day').end)
 
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [errorCode, setErrorCode] = useState<AppErrorCode>('UNKNOWN')
 
-  const [candles,  setCandles]  = useState<Candle[]>([])
+  const [candles, setCandles] = useState<Candle[]>([])
   const [srLevels, setSrLevels] = useState<SRLevel[]>([])
-  const [meta,     setMeta]     = useState<MarketMeta | null>(null)
+  const [meta, setMeta] = useState<MarketMeta | null>(null)
 
   const suggestRef = useRef<HTMLDivElement>(null)
 
@@ -229,16 +261,16 @@ export default function MarketAnalysis() {
     }
   }, [ticker, startDate, endDate, granularity])
 
-  const lastPrice  = candles.length ? candles[candles.length - 1].close : null
+  const lastPrice = candles.length ? candles[candles.length - 1].close : null
   const firstPrice = candles.length ? candles[0].close : null
-  const priceChg   = lastPrice && firstPrice
+  const priceChg = lastPrice && firstPrice
     ? ((lastPrice - firstPrice) / firstPrice * 100)
     : null
 
   const resistances = srLevels.filter(l => l.type === 'resistance')
-                               .sort((a, b) => a.price - b.price)
-  const supports    = srLevels.filter(l => l.type === 'support')
-                               .sort((a, b) => b.price - a.price)
+    .sort((a, b) => a.price - b.price)
+  const supports = srLevels.filter(l => l.type === 'support')
+    .sort((a, b) => b.price - a.price)
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 pb-8">
@@ -393,15 +425,15 @@ export default function MarketAnalysis() {
         >
           {loading
             ? <>
-                <span className="w-4 h-4 border-2 border-white
+              <span className="w-4 h-4 border-2 border-white
                                  border-t-transparent rounded-full
                                  animate-spin block" />
-                Fetching data...
-              </>
+              Fetching data...
+            </>
             : <>
-                <TrendingUp size={16} />
-                Analyse {ticker.trim() || 'ticker'}
-              </>
+              <TrendingUp size={16} />
+              Analyse {ticker.trim() || 'ticker'}
+            </>
           }
         </button>
       </div>
@@ -438,8 +470,8 @@ export default function MarketAnalysis() {
                   <p className={`text-xs font-medium flex items-center
                                  justify-end gap-1
                                  ${priceChg >= 0
-                                   ? 'text-green-600'
-                                   : 'text-red-600'}`}>
+                      ? 'text-green-600'
+                      : 'text-red-600'}`}>
                     {priceChg >= 0
                       ? <TrendingUp size={12} />
                       : <TrendingDown size={12} />
@@ -492,31 +524,31 @@ export default function MarketAnalysis() {
               {resistances.length === 0
                 ? <p className="text-xs text-gray-400">No levels found</p>
                 : (
-                <div className="space-y-2">
-                  {resistances.map((r, i) => (
-                    <div key={i}
-                      className="flex items-center justify-between
+                  <div className="space-y-2">
+                    {resistances.map((r, i) => (
+                      <div key={i}
+                        className="flex items-center justify-between
                                  py-1.5 border-b border-gray-50 last:border-0">
-                      <div>
-                        <span className="text-sm font-semibold text-gray-900">
-                          ₹{fmt(r.price)}
-                        </span>
-                        {lastPrice && (
-                          <span className="text-xs text-red-500 ml-2">
-                            +{((r.price - lastPrice) / lastPrice * 100).toFixed(1)}%
+                        <div>
+                          <span className="text-sm font-semibold text-gray-900">
+                            ₹{fmt(r.price)}
                           </span>
-                        )}
+                          {lastPrice && (
+                            <span className="text-xs text-red-500 ml-2">
+                              +{((r.price - lastPrice) / lastPrice * 100).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-red-400">
+                          {strengthDots(r.strength)}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {r.touches}x
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-red-400">
-                        {strengthDots(r.strength)}
-                        <span className="text-xs text-gray-400 ml-1">
-                          {r.touches}x
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
 
             {/* Support */}
@@ -529,31 +561,31 @@ export default function MarketAnalysis() {
               {supports.length === 0
                 ? <p className="text-xs text-gray-400">No levels found</p>
                 : (
-                <div className="space-y-2">
-                  {supports.map((s, i) => (
-                    <div key={i}
-                      className="flex items-center justify-between
+                  <div className="space-y-2">
+                    {supports.map((s, i) => (
+                      <div key={i}
+                        className="flex items-center justify-between
                                  py-1.5 border-b border-gray-50 last:border-0">
-                      <div>
-                        <span className="text-sm font-semibold text-gray-900">
-                          ₹{fmt(s.price)}
-                        </span>
-                        {lastPrice && (
-                          <span className="text-xs text-green-600 ml-2">
-                            {((s.price - lastPrice) / lastPrice * 100).toFixed(1)}%
+                        <div>
+                          <span className="text-sm font-semibold text-gray-900">
+                            ₹{fmt(s.price)}
                           </span>
-                        )}
+                          {lastPrice && (
+                            <span className="text-xs text-green-600 ml-2">
+                              {((s.price - lastPrice) / lastPrice * 100).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-green-500">
+                          {strengthDots(s.strength)}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {s.touches}x
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-green-500">
-                        {strengthDots(s.strength)}
-                        <span className="text-xs text-gray-400 ml-1">
-                          {s.touches}x
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
           </div>
         </>
