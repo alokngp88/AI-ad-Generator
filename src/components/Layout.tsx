@@ -17,7 +17,7 @@ const nav = [
 export default function Layout() {
   const navigate   = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  console.log("In Layout display"); 
+  //console.log("In Layout display"); 
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/')
