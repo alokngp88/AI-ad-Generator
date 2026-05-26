@@ -11,7 +11,7 @@ const nav = [
   { to: '/reels',   label: 'Reels',     icon: Video     },
   { to: '/stories', label: 'Stories',   icon: Layers    },
   { to: '/market',  label: 'Markets',   icon: LineChart },
-  { to: '/history', label: 'History',   icon: History   },
+  { to: '/history', label: 'History',   icon: History   }
 ]
 
 export default function Layout() {
