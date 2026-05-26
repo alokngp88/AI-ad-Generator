@@ -17,7 +17,7 @@ const nav = [
 export default function Layout() {
   const navigate   = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-
+  console.log("In Layout display"); 
   async function handleLogout() {
     await supabase.auth.signOut()
     navigate('/')
@@ -31,7 +31,7 @@ export default function Layout() {
                          top-0 z-30">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <img
-            src="/logo.png"
+            src="/icon.png"
             alt="logo"
             className="h-8 w-auto object-contain"
             onError={e => {
