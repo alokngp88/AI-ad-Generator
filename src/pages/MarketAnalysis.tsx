@@ -62,11 +62,11 @@ function CandleChart({
   candles,
   srLevels,
 }: {
-  candles:  Candle[]
+  candles: Candle[]
   srLevels: SRLevel[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef     = useRef<IChartApi | null>(null)
+  const chartRef = useRef<IChartApi | null>(null)
 
   useEffect(() => {
     if (!containerRef.current || !candles.length) return
@@ -84,16 +84,42 @@ function CandleChart({
       const chart = lc.createChart(containerRef.current, {
         layout: {
           background: { type: lc.ColorType.Solid, color: '#ffffff' },
-          textColor:  '#374151',
+          textColor: '#374151',
         },
         grid: {
           vertLines: { color: '#f3f4f6' },
           horzLines: { color: '#f3f4f6' },
         },
-        crosshair:       { mode: 1 },
+        crosshair: { mode: 1 },
         rightPriceScale: { borderColor: '#e5e7eb' },
-        timeScale:       { borderColor: '#e5e7eb', timeVisible: true },
-        width:  containerRef.current.clientWidth,
+        timeScale: {
+          borderColor: '#e5e7eb',
+          timeVisible: true,
+          secondsVisible: false,
+          // Tell chart timestamps are already in IST (treated as UTC)
+          tickMarkFormatter: (time: number) => {
+            const d = new Date(time * 1000)
+            const hh = String(d.getUTCHours()).padStart(2, '0')
+            const mm = String(d.getUTCMinutes()).padStart(2, '0')
+            return `${hh}:${mm}`
+          },
+        },
+        localization: {
+          timeFormatter: (time: number) => {
+            const d = new Date(time * 1000)
+            const date = d.toLocaleDateString('en-IN', {
+              timeZone: 'UTC',   // already IST-adjusted
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+            const hh = String(d.getUTCHours()).padStart(2, '0')
+            const mm = String(d.getUTCMinutes()).padStart(2, '0')
+            // Only show time for intraday granularities
+            return `${date} ${hh}:${mm} IST`
+          },
+        },
+        width: containerRef.current.clientWidth,
         height: 380,
       })
 
@@ -101,12 +127,12 @@ function CandleChart({
 
       // Candlestick series — v5 API
       const candleOpts: Partial<CandlestickSeriesOptions> = {
-        upColor:         '#16a34a',
-        downColor:       '#dc2626',
-        borderUpColor:   '#16a34a',
+        upColor: '#16a34a',
+        downColor: '#dc2626',
+        borderUpColor: '#16a34a',
         borderDownColor: '#dc2626',
-        wickUpColor:     '#16a34a',
-        wickDownColor:   '#dc2626',
+        wickUpColor: '#16a34a',
+        wickDownColor: '#dc2626',
       }
       const candleSeries = chart.addSeries(
         lc.CandlestickSeries,
@@ -114,10 +140,11 @@ function CandleChart({
       )
 
       const chartData = candles.map(c => ({
-        time:  Math.floor(c.time / 1000) as unknown as Time,
-        open:  c.open,
-        high:  c.high,
-        low:   c.low,
+        // time is already IST-adjusted Unix seconds from Edge Function
+        time: c.time as unknown as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
         close: c.close,
       }))
 
@@ -127,9 +154,9 @@ function CandleChart({
         // S&R lines — v5 API
         srLevels.forEach(level => {
           const lineOpts: Partial<LineSeriesOptions> = {
-            color:            level.type === 'resistance' ? '#dc2626' : '#16a34a',
-            lineWidth:        (level.strength >= 3 ? 2 : 1) as 1 | 2 | 3 | 4,
-            lineStyle:        level.strength >= 4 ? 0 : 2,
+            color: level.type === 'resistance' ? '#dc2626' : '#16a34a',
+            lineWidth: (level.strength >= 3 ? 2 : 1) as 1 | 2 | 3 | 4,
+            lineStyle: level.strength >= 4 ? 0 : 2,
             priceLineVisible: false,
             lastValueVisible: true,
             title: `${level.type === 'resistance' ? 'R' : 'S'} ${fmt(level.price)}`,
@@ -138,7 +165,7 @@ function CandleChart({
           const lineSeries = chart.addSeries(lc.LineSeries, lineOpts)
 
           lineSeries.setData([
-            { time: chartData[0].time,                    value: level.price },
+            { time: chartData[0].time, value: level.price },
             { time: chartData[chartData.length - 1].time, value: level.price },
           ])
         })
@@ -485,6 +512,19 @@ export default function MarketAnalysis() {
             <p className="text-xs text-gray-400 mt-2">
               {candles.length} candles · {granularity} granularity ·
               {startDate} to {endDate}
+            </p>
+            {/* IST timestamp indicator */}
+            <p className="text-xs text-blue-500 mt-1">
+              All times in IST (UTC+5:30) ·{' '}
+              {new Date().toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              })} now
             </p>
           </div>
 
