@@ -7,7 +7,7 @@ export default function UsageGuard({ children }: Props) {
   // limit intentionally not destructured — not needed in UI
 
   const showWarning = !loading && remaining <= 3
-  console.log(`showWarning: ${showWarning} remaining: ${remaining}`)
+  //console.log(`showWarning: ${showWarning} remaining: ${remaining}`)
 
   return (
     <div className="space-y-3">
