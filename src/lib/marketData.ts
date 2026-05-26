@@ -40,12 +40,12 @@ export async function fetchMarketData(
   const { data, error } = await supabase.functions.invoke<{
     result?: MarketDataResult
     error?:  string
-  }>('market-data', {
+  }>('indicatorsfn', {
     body: { ticker, startDate, endDate, granularity }
   })
 
   if (error)        throw new Error(error.message)
-  if (!data)        throw new Error('No response from market-data function')
+  if (!data)        throw new Error('No response from indicators function')
   if (data.error)   throw new Error(data.error)
   return data.result!
 }
