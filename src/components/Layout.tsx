@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Image, Video, Layers, History, LogOut } from 'lucide-react'
+import { Image, Video, Layers, History, LogOut, LineChart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const nav = [
   { to: '/poster',  label: 'Ad Poster', icon: Image   },
   { to: '/reels',   label: 'Reels',     icon: Video   },
   { to: '/stories', label: 'Stories',   icon: Layers  },
+  { to: '/market',  label: 'Markets',   icon: LineChart  },
   { to: '/history', label: 'History',   icon: History },
 ]
 

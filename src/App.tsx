@@ -8,6 +8,7 @@ import History    from './pages/History'
 import { UsageProvider }   from './context/UsageContext'
 import { ResultsProvider } from './context/ResultsContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import MarketAnalysis from './pages/MarketAnalysis'
 
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
                   <Route path="reels"   element={<Reels />} />
                   <Route path="stories" element={<Stories />} />
                   <Route path="history" element={<History />} />
+                  <Route path="market" element={<MarketAnalysis />} />
                 </Route>
               </Routes>
             </BrowserRouter>
